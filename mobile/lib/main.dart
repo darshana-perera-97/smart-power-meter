@@ -62,12 +62,12 @@ class _PowerMeterHomePageState extends State<PowerMeterHomePage> {
   void initState() {
     super.initState();
     _loadData();
-    // Auto-refresh every 1 second to check for key changes
+    // Auto-refresh every 2 seconds to check for key changes
     _startAutoRefresh();
   }
 
   void _startAutoRefresh() {
-    Future.delayed(const Duration(seconds: 1), () {
+    Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         _loadData();
         _startAutoRefresh(); // Continue auto-refresh
@@ -109,18 +109,77 @@ class _PowerMeterHomePageState extends State<PowerMeterHomePage> {
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
+  Widget _buildSplashScreen() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+      ),
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading power meter data...'),
+            // App Logo/Icon
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.black, width: 2),
+              ),
+              child: const Icon(
+                Icons.flash_on,
+                color: Colors.white,
+                size: 60,
+              ),
+            ),
+            const SizedBox(height: 30),
+            
+            // App Title
+            const Text(
+              'Smart Power Meter',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 10),
+            
+            // Subtitle
+            const Text(
+              'Real-time Power Monitoring',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 40),
+            
+            // Loading Indicator
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+              strokeWidth: 3,
+            ),
+            const SizedBox(height: 20),
+            
+            // Loading Text
+            const Text(
+              'Connecting to power meter...',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
           ],
         ),
-      );
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return _buildSplashScreen();
     }
 
     if (_errorMessage.isNotEmpty) {
