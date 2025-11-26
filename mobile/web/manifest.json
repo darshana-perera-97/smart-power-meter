@@ -1,6 +1,6 @@
 {
-    "name": "mobile",
-    "short_name": "mobile",
+    "name": "Smart Power Meter",
+    "short_name": "Power Meter",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

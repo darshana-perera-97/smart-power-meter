@@ -56,6 +56,7 @@ class FirebaseService {
   static const String _baseUrl = 'https://power-meter-7d423-default-rtdb.asia-southeast1.firebasedatabase.app';
   static const String _apiKey = 'AIzaSyCM3qjVP_Y5OBKs0ti8aZbbWbaasx-dhAM';
   static const String _dataPath = '/002.json';
+  static const String _switchPath = '/switch/002.json';
 
   // Get current data from Firebase Realtime Database
   static Future<PowerMeterData?> getCurrentPowerMeterData() async {
@@ -97,6 +98,45 @@ class FirebaseService {
       status: "ok",
       timestamp: DateTime.now(),
     );
+  }
+
+  static Future<bool> getSwitchState() async {
+    final url = '$_baseUrl$_switchPath?auth=$_apiKey';
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final decoded = response.body.isEmpty ? false : json.decode(response.body);
+      return _parseSwitchValue(decoded);
+    }
+
+    throw Exception('Failed to load switch state (${response.statusCode})');
+  }
+
+  static Future<void> setSwitchState(bool value) async {
+    final url = '$_baseUrl$_switchPath?auth=$_apiKey';
+    final response = await http.put(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(value),
+    );
+
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to update switch state (${response.statusCode})');
+    }
+  }
+
+  static bool _parseSwitchValue(dynamic raw) {
+    if (raw is bool) {
+      return raw;
+    }
+    if (raw is num) {
+      return raw != 0;
+    }
+    if (raw is String) {
+      final normalized = raw.toLowerCase();
+      return normalized == 'true' || normalized == '1' || normalized == 'on';
+    }
+    return false;
   }
 
   // Stream to simulate real-time updates (polling every 2 seconds)

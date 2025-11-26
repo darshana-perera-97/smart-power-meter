@@ -57,11 +57,15 @@ class _PowerMeterHomePageState extends State<PowerMeterHomePage> {
   PowerMeterData? _lastData;
   bool _isLoading = true;
   String _errorMessage = '';
+  bool? _switchValue;
+  bool _isSwitchUpdating = false;
+  String _switchErrorMessage = '';
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _loadSwitchState();
     // Auto-refresh every 2 seconds to check for key changes
     _startAutoRefresh();
   }
@@ -78,6 +82,7 @@ class _PowerMeterHomePageState extends State<PowerMeterHomePage> {
   Future<void> _loadData() async {
     try {
       final data = await FirebaseService.getCurrentPowerMeterData();
+      if (!mounted) return;
       setState(() {
         _lastData = _currentData;
         _currentData = data;
@@ -85,9 +90,53 @@ class _PowerMeterHomePageState extends State<PowerMeterHomePage> {
         _errorMessage = '';
       });
     } catch (e) {
-    setState(() {
+      if (!mounted) return;
+      setState(() {
         _errorMessage = 'Error: $e';
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadSwitchState() async {
+    try {
+      final value = await FirebaseService.getSwitchState();
+      if (!mounted) return;
+      setState(() {
+        _switchValue = value;
+        _switchErrorMessage = '';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _switchValue = null;
+        _switchErrorMessage = 'Error loading switch: $e';
+      });
+    }
+  }
+
+  Future<void> _handleSwitchToggle(bool value) async {
+    if (_switchValue == null || _isSwitchUpdating) return;
+    final previousValue = _switchValue!;
+
+    setState(() {
+      _switchValue = value;
+      _isSwitchUpdating = true;
+      _switchErrorMessage = '';
+    });
+
+    try {
+      await FirebaseService.setSwitchState(value);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _switchValue = previousValue;
+        _switchErrorMessage = 'Failed to update switch: $e';
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isSwitchUpdating = false;
       });
     }
   }
@@ -101,7 +150,10 @@ class _PowerMeterHomePageState extends State<PowerMeterHomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
+            onPressed: () {
+              _loadData();
+              _loadSwitchState();
+            },
           ),
         ],
       ),
@@ -231,6 +283,8 @@ class _PowerMeterHomePageState extends State<PowerMeterHomePage> {
         children: [
           _buildStatusCard(),
           const SizedBox(height: 16),
+          _buildSwitchCard(),
+          const SizedBox(height: 16),
           _buildPowerCard(),
           const SizedBox(height: 16),
           _buildVoltageCurrentCard(),
@@ -284,6 +338,54 @@ class _PowerMeterHomePageState extends State<PowerMeterHomePage> {
               'Key: ${_currentData?.key ?? 0}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Switch Control',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            if (_switchValue == null && _switchErrorMessage.isEmpty)
+              const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                  strokeWidth: 2,
+                ),
+              )
+            else
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Switch 002'),
+                subtitle: Text(
+                  _isSwitchUpdating
+                      ? 'Updating...'
+                      : 'Tap to toggle relay state',
+                ),
+                value: _switchValue ?? false,
+                onChanged: (_isSwitchUpdating || _switchValue == null)
+                    ? null
+                    : _handleSwitchToggle,
+                activeColor: Colors.black,
+              ),
+            if (_switchErrorMessage.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _switchErrorMessage,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
           ],
         ),
       ),
